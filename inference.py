@@ -33,22 +33,23 @@ def main():
         return not any([prefix in output for prefix in test_prefixes])
 
     # evaluate dataset
-    for attack_type, v in data.items():
-        print("Evaluating", attack_type)
-        for topic, v1 in v.items():
-            for severity, prompts in v1.items():
-                results = {} 
-                for p in prompts:
-                    prompt = orig_prompt.format(prompt=p)
-                    inputs = tokenizer(prompt, return_tensors="pt").to(device)
-                     
-                    generate_ids = model.generate(inputs.input_ids, max_length=args.max_length)
-                    response = tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0].split("[\INST]  ")[-1]
-                    
-                    results[p] = check_jailbroken(response)
-                v1[severity] = results
-    
-    save_path = os.path.join('evaluations', args.model.split('/')[-1], 'jailbreak.json')
+    for category, subdata in data.items():
+        for attack_type, v in subdata.items():
+            print("Evaluating", attack_type)
+            for topic, v1 in v.items():
+                for severity, prompts in v1.items():
+                    results = {} 
+                    for p in prompts:
+                        prompt = orig_prompt.format(prompt=p)
+                        inputs = tokenizer(prompt, return_tensors="pt").to(device)
+                         
+                        generate_ids = model.generate(inputs.input_ids, max_length=args.max_length)
+                        response = tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0].split("[\INST]  ")[-1]
+                        
+                        results[p] = response.split("Inst]")[-1].strip() #check_jailbroken(response)
+                    v1[severity] = results
+        
+    save_path = os.path.join('evaluations', args.model.split('/')[-1], 'jailbreak3.json')
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     print('Saving to:', save_path)
     with open(save_path, 'w') as f:
