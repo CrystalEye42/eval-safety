@@ -1,3 +1,13 @@
+# Safety in Model Compression
+
+First obtain model checkpoint by running Wanda pruning as described below. Then, run 
+
+```
+python inference.py \
+  --model path/to/model \
+  --dataset path/to/dataset
+```
+
 # Pruning LLMs by Weights and Activations
 Official PyTorch implementation of **Wanda** (Pruning by **W**eights **and a**ctivations), as presented in our paper:
 
