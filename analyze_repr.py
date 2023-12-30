@@ -6,6 +6,7 @@ import argparse
 import yaml
 import json
 import os
+from transformers import GenerationConfig
 
 def get_repr_prompt(text):
     return  f"The following text: '{text}' means in one word: "
@@ -15,7 +16,8 @@ def get_repr(model, tokenizer, prompt, device):
     llama2_prompt = f"[INST] {prompt} [\INST]"
     repr_prompt = get_repr_prompt(llama2_prompt)
     tokens = tokenizer(repr_prompt, return_tensors="pt").to(device)
-    output = model.generate(tokens.input_ids, max_new_tokens=1, output_scores=True, return_dict_in_generate=True)
+    generation_config = GenerationConfig(bos_token_id=1, eos_token_id=2, pad_token_id=0)
+    output = model.generate(tokens.input_ids, max_new_tokens=1, output_scores=True, return_dict_in_generate=True, generation_config=generation_config)
     prompt_repr = output['scores'][0]
     return prompt_repr
 
