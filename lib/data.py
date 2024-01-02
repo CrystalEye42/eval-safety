@@ -46,12 +46,27 @@ def get_c4(nsamples, seed, seqlen, tokenizer):
     # Generate samples from training set
     random.seed(seed)
     trainloader = []
+    indices = [(random.random(), i) for i in range(len(traindata)-16)]
+    indices.sort()
+    indices = [i[1] for i in indices]
+    idx = 0
     for _ in range(nsamples):
+        delta = 0
+        curr = []
         while True:
-            i = random.randint(0, len(traindata) - 1)
-            trainenc = tokenizer(traindata[i]['text'], return_tensors='pt')
-            if trainenc.input_ids.shape[1] > seqlen:
-                break
+            i = indices[idx+delta]
+            delta += 1
+            testenc = tokenizer(traindata[i]['text'], return_tensors='pt')
+            if testenc.input_ids.shape[1] < seqlen:# / 8:
+                continue
+            curr.append(i)
+            if len(curr) > 0:#6:
+                trainenc = tokenizer(' '.join(traindata.select(curr)['text']), return_tensors='pt')
+                if trainenc.input_ids.shape[1] > seqlen:
+                    idx += delta
+                    break
+            if idx+delta == len(indices):
+                raise Exception('Not enough available samples')
         i = random.randint(0, trainenc.input_ids.shape[1] - seqlen - 1)
         j = i + seqlen
         inp = trainenc.input_ids[:, i:j]

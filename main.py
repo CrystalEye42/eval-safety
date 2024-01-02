@@ -21,8 +21,10 @@ def get_llm(model_name, cache_dir="llm_weights"):
         low_cpu_mem_usage=True, 
         device_map="auto"
     )
-
-    model.seqlen = model.config.max_position_embeddings 
+    if 'mistral' in model_name:
+        model.seqlen = 4096
+    else:
+        model.seqlen = model.config.max_position_embeddings 
     return model
 
 def main():
