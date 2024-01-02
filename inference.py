@@ -21,9 +21,9 @@ def main():
     system_prompt = "You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.\n\nIf a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information."
     
     if args.use_system_prompt:
-        orig_prompt = f"<s>[INST] <<SYS>> \n{system_prompt} \n<</SYS>> \n\n"
+        orig_prompt = f"[INST] <<SYS>> \n{system_prompt} \n<</SYS>> \n\n"
     else:
-        #orig_prompt = "<s>[INST] "
+        #orig_prompt = "[INST] "
         orig_prompt = "### HUMAN:\n"
     #orig_prompt += "{prompt} [\INST]"
     orig_prompt +="{prompt}\n\n### RESPONSE:\n"
