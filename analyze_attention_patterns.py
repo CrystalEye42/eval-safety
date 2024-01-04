@@ -268,5 +268,5 @@ if __name__ == "__main__":
                         counter_2 += 1
                     counter_1 += 1
             # pickle is bad practice but this will do for now
-            with open('result_{candidate_metric}.pkl', 'wb') as file:
+            with open(f'result_{candidate_metric}.pkl', 'wb') as file:
                 pickle.dump(result, file)
