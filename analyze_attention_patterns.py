@@ -68,7 +68,7 @@ def get_orig_prompt_tokens_idx(jailbreak_subwords, jailbreak_method):
 
 def is_last_token_in_jailbreak(jailbreak_method):
     prompt_spec = PROMPT_SPEC[jailbreak_method]
-    return isinstance(prompt_spec, int)
+    return isinstance(prompt_spec, tuple)
 
 
 def get_ranking_arr(jailbreak_attention, LAYER_IDX, HEAD_IDX, orig_prompt_tokens_idxs_in_attn):
@@ -152,8 +152,8 @@ def metric3(jailbreak_attention,
                                   LAYER_IDX,
                                   HEAD_IDX,
                                   orig_prompt_tokens_idxs_in_attn)
-    cond = ranking_arr[-1] == 1 if is_last_token_in_jailbreak(
-        jailbreak_method) else 3
+    cond = ranking_arr[-1] == (1 if is_last_token_in_jailbreak(
+        jailbreak_method) else 3)
     return np.sum(np.where(cond)[0])
 
 
@@ -228,7 +228,7 @@ if __name__ == "__main__":
             print(f"****metric = {candidate_metric}")
             for jailbreak_method, category_data in data.items():
                 if jailbreak_method == 'ORIGINAL':
-                    pass
+                    continue
                 print(f"**jailbreak method = {jailbreak_method}")
                 counter_1 = 1
                 result[jailbreak_method] = {}
@@ -260,6 +260,7 @@ if __name__ == "__main__":
                                     jailbreak_method,
                                     candidate_metric)
                                 prune_improvement = val2 - val1
+                                print(f"    diff = {prune_improvement}")
                                 result[jailbreak_method][category_name][
                                         task_name][severity_name].append(prune_improvement)
 
