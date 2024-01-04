@@ -8,7 +8,7 @@
 
 import json
 from transformers import AutoTokenizer, AutoModel
-
+import pickle
 import torch
 import numpy as np
 
@@ -109,10 +109,10 @@ def get_ranking_arr(jailbreak_attention, LAYER_IDX, HEAD_IDX, orig_prompt_tokens
     return ranking_arr
 
 
-def metric11(jailbreak_attention,
-             LAYER_IDX,
-             HEAD_IDX,
-             orig_prompt_tokens_idxs_in_attn):
+def metric1(jailbreak_attention,
+            LAYER_IDX,
+            HEAD_IDX,
+            orig_prompt_tokens_idxs_in_attn):
     """
     the lower this is, the more in-task parts of the prompt attend to themselves
     (sum of ranks)
@@ -124,10 +124,10 @@ def metric11(jailbreak_attention,
     return np.sum(np.where(ranking_arr == 3)[1])
 
 
-def metric21(jailbreak_attention,
-             LAYER_IDX,
-             HEAD_IDX,
-             orig_prompt_tokens_idxs_in_attn):
+def metric2(jailbreak_attention,
+            LAYER_IDX,
+            HEAD_IDX,
+            orig_prompt_tokens_idxs_in_attn):
     """
     the lower this is, the more jailbreak parts of the prompt attend to themselves
     (sum of ranks)
@@ -139,11 +139,11 @@ def metric21(jailbreak_attention,
     return np.sum(np.where(ranking_arr == 0)[1])
 
 
-def metric31(jailbreak_attention,
-             LAYER_IDX,
-             HEAD_IDX,
-             jailbreak_method,
-             orig_prompt_tokens_idxs_in_attn):
+def metric3(jailbreak_attention,
+            LAYER_IDX,
+            HEAD_IDX,
+            jailbreak_method,
+            orig_prompt_tokens_idxs_in_attn):
     """
     the lower this is, the more the last token attends to task prompt tokens
     (and not jailbreak part). Computed as a sum of ranks.
@@ -185,19 +185,25 @@ def eval_model_invariance_to_jailbreak(
             if metric_name == "metric4":
                 candidate_metric.append(
                     metric4(jailbreak_attention, LAYER_IDX, HEAD_IDX))
-            if metric_name == "metric31":
+            if metric_name == "metric3":
                 candidate_metric.append(
-                    metric31(jailbreak_attention,
-                             LAYER_IDX,
-                             HEAD_IDX,
-                             jailbreak_method,
-                             orig_prompt_tokens_idxs_in_attn))
-            if metric_name == "metric21":
+                    metric3(jailbreak_attention,
+                            LAYER_IDX,
+                            HEAD_IDX,
+                            jailbreak_method,
+                            orig_prompt_tokens_idxs_in_attn))
+            if metric_name == "metric2":
                 candidate_metric.append(
-                    metric21(jailbreak_attention,
-                             LAYER_IDX,
-                             HEAD_IDX,
-                             orig_prompt_tokens_idxs_in_attn))
+                    metric2(jailbreak_attention,
+                            LAYER_IDX,
+                            HEAD_IDX,
+                            orig_prompt_tokens_idxs_in_attn))
+            if metric_name == "metric1":
+                candidate_metric.append(
+                    metric1(jailbreak_attention,
+                            LAYER_IDX,
+                            HEAD_IDX,
+                            orig_prompt_tokens_idxs_in_attn))
 
     return np.mean(candidate_metric)
 
@@ -216,39 +222,50 @@ if __name__ == "__main__":
 
     # note that this could be batched for performance
     candidate_metric = "metric4"
+    result = {}
     with torch.inference_mode():
-        for jailbreak_method, category_data in data.items():
-            if jailbreak_method == 'ORIGINAL':
-                pass
-            print(f"jailbreak method = {jailbreak_method}")
-            counter_1 = 1
-            for category_name, subcategory_data in category_data.items():
-                print(f"  category {counter_1} out of {len(category_data) + 1}")
-                counter_2 = 1
-                for task_name, task_data in subcategory_data.items():
-                    print(
-                        f"    task {counter_2} out of {len(subcategory_data) + 1}")
-                    counter_3 = 1
-                    for severity_name, examples in task_data.items():
-                        for example_idx, prompts in enumerate(examples):
-                            prompt = prompts["task"]
-                            jailbreak_prompt = prompts["jailbreaking_prompt"]
+        for candidate_metric in ["metric1", "metric2", "metric3", "metric4"]:
+            print(f"****metric = {candidate_metric}")
+            for jailbreak_method, category_data in data.items():
+                if jailbreak_method == 'ORIGINAL':
+                    pass
+                print(f"**jailbreak method = {jailbreak_method}")
+                counter_1 = 1
+                result[jailbreak_method] = {}
+                for category_name, subcategory_data in category_data.items():
+                    print(f"  category {counter_1} out of {len(category_data) + 1}")
+                    counter_2 = 1
+                    result[jailbreak_method][category_name] = {}
+                    for task_name, task_data in subcategory_data.items():
+                        print(
+                            f"    task {counter_2} out of {len(subcategory_data) + 1}")
+                        counter_3 = 1
+                        result[jailbreak_method][category_name][task_name] = {}
+                        for severity_name, examples in task_data.items():
+                            result[jailbreak_method][category_name][task_name][severity_name] = []
+                            for example_idx, prompts in enumerate(examples):
+                                prompt = prompts["task"]
+                                jailbreak_prompt = prompts["jailbreaking_prompt"]
 
-                            val1 = eval_model_invariance_to_jailbreak(
-                                jailbreak_prompt,
-                                base_model,
-                                tokenizer,
-                                jailbreak_method,
-                                candidate_metric)
-                            val2 = eval_model_invariance_to_jailbreak(
-                                jailbreak_prompt,
-                                prune_model,
-                                tokenizer,
-                                jailbreak_method,
-                                candidate_metric)
-                            prune_improvement = val2 - val1
-                            print(prune_improvement)
+                                val1 = eval_model_invariance_to_jailbreak(
+                                    jailbreak_prompt,
+                                    base_model,
+                                    tokenizer,
+                                    jailbreak_method,
+                                    candidate_metric)
+                                val2 = eval_model_invariance_to_jailbreak(
+                                    jailbreak_prompt,
+                                    prune_model,
+                                    tokenizer,
+                                    jailbreak_method,
+                                    candidate_metric)
+                                prune_improvement = val2 - val1
+                                result[jailbreak_method][category_name][
+                                        task_name][severity_name].append(prune_improvement)
 
-                        counter_3 += 1
-                    counter_2 += 1
-                counter_1 += 1
+                            counter_3 += 1
+                        counter_2 += 1
+                    counter_1 += 1
+            # pickle is bad practice but this will do for now
+            with open('result_{candidate_metric}.pkl', 'wb') as file:
+                pickle.dump(result, file)
