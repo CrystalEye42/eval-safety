@@ -225,20 +225,20 @@ if __name__ == "__main__":
     result = {}
     with torch.inference_mode():
         for candidate_metric in ["metric1", "metric2", "metric3", "metric4"]:
-            print(f"****metric = {candidate_metric}")
+            print(f"****metric = {candidate_metric}", flush=True)
             for jailbreak_method, category_data in data.items():
                 if jailbreak_method == 'ORIGINAL':
                     continue
-                print(f"**jailbreak method = {jailbreak_method}")
+                print(f"**jailbreak method = {jailbreak_method}", flush=True)
                 counter_1 = 1
                 result[jailbreak_method] = {}
                 for category_name, subcategory_data in category_data.items():
-                    print(f"  category {counter_1} out of {len(category_data) + 1}")
+                    print(f"  category {counter_1} out of {len(category_data) + 1}", flush=True)
                     counter_2 = 1
                     result[jailbreak_method][category_name] = {}
                     for task_name, task_data in subcategory_data.items():
                         print(
-                            f"    task {counter_2} out of {len(subcategory_data) + 1}")
+                            f"    task {counter_2} out of {len(subcategory_data) + 1}", flush=True)
                         counter_3 = 1
                         result[jailbreak_method][category_name][task_name] = {}
                         for severity_name, examples in task_data.items():
@@ -260,7 +260,7 @@ if __name__ == "__main__":
                                     jailbreak_method,
                                     candidate_metric)
                                 prune_improvement = val2 - val1
-                                print(f"    diff = {prune_improvement}")
+                                print(f"    diff = {prune_improvement}", flush=True)
                                 result[jailbreak_method][category_name][
                                         task_name][severity_name].append(prune_improvement)
 
