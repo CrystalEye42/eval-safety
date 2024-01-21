@@ -212,7 +212,7 @@ if __name__ == "__main__":
     base_model = AutoModel.from_pretrained(
         "./Llama-2-7b-chat-hf", output_attentions=True).to(DEVICE)
     prune_model = AutoModel.from_pretrained(
-        "./Llama-2-7b-chat-hf-20-sparsity", output_attentions=True).to(DEVICE)
+        "./Llama-2-7b-chat-hf-30-sparsity", output_attentions=True).to(DEVICE)
     tokenizer = AutoTokenizer.from_pretrained(
         'NousResearch/Llama-2-7b-chat-hf', cache_dir='llm_weights', use_fast=True)
 
@@ -221,10 +221,9 @@ if __name__ == "__main__":
     result = {}
 
     # note that this could be batched for performance
-    candidate_metric = "metric4"
     result = {}
     with torch.inference_mode():
-        for candidate_metric in ["metric1", "metric2", "metric3", "metric4"]:
+        for candidate_metric in ["metric1", "metric3"]:
             print(f"****metric = {candidate_metric}", flush=True)
             for jailbreak_method, category_data in data.items():
                 if jailbreak_method == 'ORIGINAL':
