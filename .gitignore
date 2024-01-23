@@ -2,3 +2,6 @@
 .env
 *.pyc
 *.DS_Store
+*.pkl
+*.pdf
+Llama-2-7b-chat-hf*
