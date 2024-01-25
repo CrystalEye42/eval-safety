@@ -119,18 +119,22 @@ def long_context():
     elif args.template == 'vicuna':
         orig_prompt = "USER: {prompt}. Answer with just a number. \nASSISTANT: "
         delim = 'ASSISTANT:'
-    orig_prompt = "[INST] {prompt}. Answer with just a number. [\INST]"
 
     correct = 0
 
-    results = {'acc': 0, 'ground_truth': [], 'responses': []}
+    results = {'acc': 0, 'ground_truth': [], 'responses': [], 'num_truncated': 0}
 
     for sample in tqdm.tqdm(testenc, desc="evaluating..."):
         inp_text = sample['conversations'][0]['value']
         prompt = orig_prompt.format(prompt=inp_text)
         inputs = tokenizer(prompt, return_tensors="pt").to(device)
+        if inputs.input_ids.shape[1] > max_len:
+            results['num_truncated'] += 1
+            old_len = inputs.input_ids.shape[1]
+            inputs.input_ids = torch.cat((inputs.input_ids[:,:10], inputs.input_ids[:, (old_len - max_len + 10):]), 1)
+            inputs.attention_mask = torch.cat((inputs.attention_mask[:,:10], inputs.attention_mask[:, (old_len - max_len + 10):]), 1)
 
-        generate_ids = model.generate(inputs.input_ids, max_length=3000, pad_token_id=tokenizer.eos_token_id)
+        generate_ids = model.generate(inputs.input_ids, max_length=model.config.max_position_embeddings, pad_token_id=tokenizer.eos_token_id)
         response = tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0].split(delim)[-1]
                         
         result = response.split("Inst]")[-1].strip()
