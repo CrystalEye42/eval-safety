@@ -5,8 +5,7 @@ import torch
 
 
 DEVICE = torch.device("mps")
-model = AutoModelForCausalLM.from_pretrained(
-        "./Llama-2-7b-chat-hf", output_attentions=True).to(DEVICE)
+model = AutoModelForCausalLM.from_pretrained("./Llama-2-7b-chat-hf").to(DEVICE)
 tokenizer = AutoTokenizer.from_pretrained(
         'NousResearch/Llama-2-7b-chat-hf', cache_dir='llm_weights', use_fast=True)
 
