@@ -27,7 +27,7 @@ def get_ppl(prompt, model, tokenizer):
 
 result = {}
 for jailbreak_method, category_data in data.items():
-    print(f"jailbreak method = {jailbreak_method}")
+    print(f"jailbreak method = {jailbreak_method}", flush=True)
     result[jailbreak_method] = {}
     for category_name, subcategory_data in category_data.items():
         result[jailbreak_method][category_name] = {}
