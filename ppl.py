@@ -20,8 +20,7 @@ def get_ppl(prompt, model, tokenizer):
         logits = outputs['logits']
         loss = torch.nn.functional.cross_entropy(logits.view(-1, tokenizer.vocab_size),
                                                  inputs.view(-1))
-        perplexity = torch.math.exp(loss)
-        return {'perplexity': perplexity, 'num_tokens': inputs.shape[1]}
+        return {'loss': loss.item(), 'num_tokens': inputs.shape[1]}
 
 
 result = {}
