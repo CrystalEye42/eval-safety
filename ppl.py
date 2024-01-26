@@ -16,10 +16,10 @@ with open("malicious_task_maping_unstructured_30_llama-2.json") as f:
 def get_ppl(prompt, model, tokenizer):
     with torch.inference_mode():
         inputs = tokenizer.encode(prompt, return_tensors='pt').to(DEVICE)
-        outputs = model(inputs)
+        outputs = model(inputs[:, :-1])
         logits = outputs['logits']
         loss = torch.nn.functional.cross_entropy(logits.view(-1, tokenizer.vocab_size),
-                                                 inputs.view(-1))
+                                                 inputs[:, 1:].view(-1))
         return {'loss': loss.item(), 'num_tokens': inputs.shape[1]}
 
 
