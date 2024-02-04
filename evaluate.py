@@ -26,12 +26,10 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 access_token = os.environ['HF_TOKEN']
 
-def main():
-    model = AutoModelForCausalLM.from_pretrained(args.model_path, cache_dir='llm_weights').to(device)
-    enc = AutoTokenizer.from_pretrained(args.model_path, cache_dir='llm_weights', use_fast=False, trust_remote_code=True)
 
+def main(model, tokenizer):
     testenc = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
-    testenc = enc("\n\n".join(testenc["text"]), return_tensors="pt")
+    testenc = tokenizer("\n\n".join(testenc["text"]), return_tensors="pt")
     model.seqlen = 2048
     testenc = testenc.input_ids.to(model.device)
     nsamples = testenc.numel() // model.seqlen
@@ -60,8 +58,8 @@ def main():
 
     results = {"ppl": ppl.item()}
     if args.output_path is not None:
-        os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
-        with open(args.output_path, "w") as f:
+        os.makedirs(args.output_path, exist_ok=True)
+        with open(os.path.join(args.output_path, 'wikitext.json'), "w") as f:
             json.dump(results, f, indent=2)
 
 def benchmark():
@@ -99,11 +97,8 @@ def benchmark():
                 json.dump(results, f, indent=2)
 
 
-def long_context():
-    model = AutoModelForCausalLM.from_pretrained(args.model_path, cache_dir='llm_weights').to(device)
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path, cache_dir='llm_weights', use_fast=False, trust_remote_code=True)
-
-    if model.config.max_position_embeddings > 2048:
+def long_context(model, tokenizer):
+    if model.config.max_position_embeddings > 2048 and False: # remove False to try longer contexts
         testenc = load_dataset("abacusai/WikiQA-Altered_Numeric_QA", split="4k", cache_dir='llm_weights')
         max_len = 4000
     else:
@@ -134,7 +129,7 @@ def long_context():
             inputs.input_ids = torch.cat((inputs.input_ids[:,:10], inputs.input_ids[:, (old_len - max_len + 10):]), 1)
             inputs.attention_mask = torch.cat((inputs.attention_mask[:,:10], inputs.attention_mask[:, (old_len - max_len + 10):]), 1)
 
-        generate_ids = model.generate(inputs.input_ids, max_length=model.config.max_position_embeddings, pad_token_id=tokenizer.eos_token_id)
+        generate_ids = model.generate(inputs.input_ids, max_length=max_len + 40, pad_token_id=tokenizer.eos_token_id)
         response = tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0].split(delim)[-1]
                         
         result = response.split("Inst]")[-1].strip()
@@ -151,15 +146,18 @@ def long_context():
     print("Acc:", results["acc"])
 
     if args.output_path is not None:
-        os.makedirs(os.path.dirname(args.output_path), exist_ok=True)
-        with open(args.output_path, "w") as f:
+        os.makedirs(args.output_path, exist_ok=True)
+        with open(os.path.join(args.output_path, 'altqa.json'), "w") as f:
             json.dump(results, f, indent=2)
 
     
 if __name__=="__main__":
+    model = AutoModelForCausalLM.from_pretrained(args.model_path, cache_dir='llm_weights').to(device)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path, cache_dir='llm_weights', use_fast=False, trust_remote_code=True)
     if args.benchmark == 'wikitext':
-        main()
+        main(model, tokenizer)
     elif args.benchmark == 'altqa':
-        long_context()
+        long_context(model, tokenizer)
     elif args.benchmark == 'openllm':
         benchmark()
+    
