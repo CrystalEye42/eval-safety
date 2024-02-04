@@ -162,6 +162,8 @@ def prune_wanda(args, model, tokenizer, device=torch.device("cuda:0"), prune_n=0
             h.remove()
 
         for name in subset:
+            if "mlp" in name:
+                continue
             print(f"pruning layer {i} name {name}")
             W_metric = torch.abs(subset[name].weight.data) * torch.sqrt(wrapped_layers[name].scaler_row.reshape((1,-1)))
 
