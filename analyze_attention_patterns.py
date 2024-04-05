@@ -209,10 +209,15 @@ def eval_model_invariance_to_jailbreak(
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--model', type=str, help='LLaMA model')
+    parser.add_argument('--save_to', type=str, help='Output File Name')
+    args = parser.parse_args()
+
     base_model = AutoModel.from_pretrained(
         "./Llama-2-7b-chat-hf", output_attentions=True).to(DEVICE)
-    prune_model = AutoModel.from_pretrained(
-        "./Llama-2-7b-chat-hf-30-sparsity", output_attentions=True).to(DEVICE)
+    prune_model = AutoModel.from_pretrained(args.model, output_attentions=True).to(DEVICE)
     tokenizer = AutoTokenizer.from_pretrained(
         'NousResearch/Llama-2-7b-chat-hf', cache_dir='llm_weights', use_fast=True)
 
@@ -223,7 +228,7 @@ if __name__ == "__main__":
     # note that this could be batched for performance
     result = {}
     with torch.inference_mode():
-        for candidate_metric in ["metric1", "metric3"]:
+        for candidate_metric in ["metric4"]:
             print(f"****metric = {candidate_metric}", flush=True)
             for jailbreak_method, category_data in data.items():
                 if jailbreak_method == 'ORIGINAL':
@@ -267,5 +272,5 @@ if __name__ == "__main__":
                         counter_2 += 1
                     counter_1 += 1
             # pickle is bad practice but this will do for now
-            with open(f'result_{candidate_metric}.pkl', 'wb') as file:
+            with open(args.save_to, 'wb') as file:
                 pickle.dump(result, file)
