@@ -169,6 +169,21 @@ def metric4(jailbreak_attention, LAYER_IDX, HEAD_IDX):
     return np.nansum(-p * np.log2(p), axis=1)
 
 
+def metric5(jailbreak_attention, LAYER_IDX, orig_prompt_tokens_idxs_in_attn):
+    jailbreak_attention = jailbreak_attention[LAYER_IDX]
+    total_attention = torch.sum(
+        jailbreak_attention[:, :, orig_prompt_tokens_idxs_in_attn, :]
+    )
+    intra_task_attention = torch.sum(
+        jailbreak_attention[
+            :, :, orig_prompt_tokens_idxs_in_attn, orig_prompt_tokens_idxs_in_attn
+        ]
+    )
+    ratio = intra_task_attention / total_attention
+    ratio = ratio.cpu().item()
+    return ratio
+
+
 def eval_metric(jailbreak_prompt, model, tokenizer, jailbreak_method, metric_name):
     jailbreak_inputs = tokenizer.encode(jailbreak_prompt, return_tensors="pt").to(
         DEVICE
@@ -182,54 +197,56 @@ def eval_metric(jailbreak_prompt, model, tokenizer, jailbreak_method, metric_nam
     jailbreak_attention = jailbreak_outputs[-1]
 
     candidate_metric = []
-    for LAYER_IDX in range(len(jailbreak_attention)):
-        for HEAD_IDX in range(jailbreak_attention[0].shape[1]):
-            if metric_name == "metric4":
-                candidate_metric.append(
-                    metric4(jailbreak_attention, LAYER_IDX, HEAD_IDX)
-                )
-            if metric_name == "metric3":
-                candidate_metric.append(
-                    metric3(
-                        jailbreak_attention,
-                        LAYER_IDX,
-                        HEAD_IDX,
-                        jailbreak_method,
-                        orig_prompt_tokens_idxs_in_attn,
+    if metric_name == "metric5":
+        for LAYER_IDX in range(len(jailbreak_attention)):
+            metric5(jailbreak_attention, LAYER_IDX, orig_prompt_tokens_idxs_in_attn)
+    else:
+        for LAYER_IDX in range(len(jailbreak_attention)):
+            for HEAD_IDX in range(jailbreak_attention[0].shape[1]):
+                if metric_name == "metric4":
+                    candidate_metric.append(
+                        metric4(jailbreak_attention, LAYER_IDX, HEAD_IDX)
                     )
-                )
-            if metric_name == "metric2":
-                candidate_metric.append(
-                    metric2(
-                        jailbreak_attention,
-                        LAYER_IDX,
-                        HEAD_IDX,
-                        orig_prompt_tokens_idxs_in_attn,
+                if metric_name == "metric3":
+                    candidate_metric.append(
+                        metric3(
+                            jailbreak_attention,
+                            LAYER_IDX,
+                            HEAD_IDX,
+                            jailbreak_method,
+                            orig_prompt_tokens_idxs_in_attn,
+                        )
                     )
-                )
-            if metric_name == "metric1":
-                candidate_metric.append(
-                    metric1(
-                        jailbreak_attention,
-                        LAYER_IDX,
-                        HEAD_IDX,
-                        orig_prompt_tokens_idxs_in_attn,
+                if metric_name == "metric2":
+                    candidate_metric.append(
+                        metric2(
+                            jailbreak_attention,
+                            LAYER_IDX,
+                            HEAD_IDX,
+                            orig_prompt_tokens_idxs_in_attn,
+                        )
                     )
-                )
+                if metric_name == "metric1":
+                    candidate_metric.append(
+                        metric1(
+                            jailbreak_attention,
+                            LAYER_IDX,
+                            HEAD_IDX,
+                            orig_prompt_tokens_idxs_in_attn,
+                        )
+                    )
 
     return np.mean(candidate_metric)
 
 
 def get_model(model_choice):
     if model_choice == "base":
-        model = AutoModel.from_pretrained(
-            "./Llama-2-7b-chat-hf", output_attentions=True
-        ).to(DEVICE)
+        fn = "./Llama-2-7b-chat-hf"
     else:
         percentage = model_choice.split("_")[0]
-        model = AutoModel.from_pretrained(
-            f"./Llama-2-7b-chat-hf-{percentage}-sparsity", output_attentions=True
-        ).to(DEVICE)
+        fn = f"./Llama-2-7b-chat-hf-{percentage}-sparsity"
+    print(f"!!!! loading model from {fn}")
+    model = AutoModel.from_pretrained(fn, output_attentions=True).to(DEVICE)
     return model
 
 
@@ -258,7 +275,7 @@ if __name__ == "__main__":
     # note that this could be batched for performance
     result = {}
     with torch.inference_mode():
-        for candidate_metric in ["metric4"]:
+        for candidate_metric in ["metric5"]:
             print(f"****metric = {candidate_metric}", flush=True)
             for jailbreak_method, category_data in data.items():
                 if jailbreak_method == "ORIGINAL":
