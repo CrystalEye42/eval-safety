@@ -194,12 +194,13 @@ def eval_metric(jailbreak_prompt, model, tokenizer, jailbreak_method, metric_nam
     )
 
     jailbreak_outputs = model(jailbreak_inputs)
-    jailbreak_attention = jailbreak_outputs[-1]
+    jailbreak_attention = jailbreak_outputs.attentions
 
     candidate_metric = []
     if metric_name == "metric5":
         for LAYER_IDX in range(len(jailbreak_attention)):
-            metric5(jailbreak_attention, LAYER_IDX, orig_prompt_tokens_idxs_in_attn)
+            metric = metric5(jailbreak_attention, LAYER_IDX, orig_prompt_tokens_idxs_in_attn)
+            candidate_metric.append(metric)
     else:
         for LAYER_IDX in range(len(jailbreak_attention)):
             for HEAD_IDX in range(jailbreak_attention[0].shape[1]):
