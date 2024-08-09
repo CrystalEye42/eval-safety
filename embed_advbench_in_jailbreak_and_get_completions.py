@@ -128,46 +128,48 @@ def completions():
         ]
 
         batch_size = initial_batch_size
-        for i in tqdm(range(0, len(remaining_prompts), batch_size)):
-            while True:
-                try:
-                    batch_prompts = remaining_prompts[i: i + batch_size]
+        i = 0
+        pbar = tqdm(total=len(remaining_prompts))
 
-                    cleaned_responses = forward_pass(
-                        model, tokenizer, batch_prompts, device, orig_prompt, delim
-                    )
+        while i < len(remaining_prompts):
+            try:
+                end_idx = min(i + batch_size, len(remaining_prompts))
+                batch_prompts = remaining_prompts[i:end_idx]
+                cleaned_responses = forward_pass(
+                    model, tokenizer, batch_prompts, device, orig_prompt, delim
+                )
 
-                    for malicious_prompt, cleaned_response in zip(
-                        batch_prompts, cleaned_responses
-                    ):
-                        result[jailbreak_technique][malicious_prompt] = cleaned_response
+                for malicious_prompt, cleaned_response in zip(
+                    batch_prompts, cleaned_responses
+                ):
+                    result[jailbreak_technique][malicious_prompt] = cleaned_response
 
-                    print(f"Processed batch with size {batch_size}")
-                    break  # Break the while loop if successful
+                i = end_idx
+                pbar.update(len(batch_prompts))
 
-                except RuntimeError as e:
-                    if "out of memory" in str(e).lower():
-                        torch.mps.empty_cache()
-                        gc.collect()
-                        batch_size = max(1, batch_size // 2)
-                        print(
-                            f"Out of memory error. Reducing batch size to {batch_size}"
-                        )
-                        if batch_size == 1:
-                            print(f"Skipping problematic prompt: {batch_prompts[0]}")
-                            i += 1
-                            break
-                    else:
-                        print(f"Unexpected error: {e}")
-                        print("Skipping this batch and continuing...")
-                        break
+            except RuntimeError as e:
+                if "out of memory" in str(e).lower():
+                    torch.mps.empty_cache()
+                    gc.collect()
+                    batch_size = max(1, batch_size // 2)
+                    print(f"Out of memory error. Reducing batch size to {batch_size}")
+                    if batch_size == 1:
+                        print(f"Skipping problematic prompt: {batch_prompts[0]}")
+                        i += 1
+                        pbar.update(1)
+                else:
+                    print(f"Unexpected error: {e}")
+                    print("Skipping this batch and continuing...")
+                    i += len(batch_prompts)
+                    pbar.update(len(batch_prompts))
 
-            if (i + 1) % save_interval == 0:
+            if i % save_interval == 0:
                 save_results(result, save_path, jailbreak_technique)
 
             gc.collect()
             torch.mps.empty_cache()
 
+        pbar.close()
         # Save after completing each jailbreak technique
         save_results(result, save_path, jailbreak_technique)
 
