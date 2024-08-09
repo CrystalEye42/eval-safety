@@ -51,15 +51,15 @@ def integrate():
 
 def completions():
     integrated = "advbench_integrated.yaml"
-    model = "./Llama-2-7b-chat-hf"
+    model_path = "./Llama-2-7b-chat-hf"
 
     with open(integrated, "r") as file:
         advbench_integrated = yaml.load(file)
 
     device = torch.device("mps")
-    model = AutoModelForCausalLM.from_pretrained(model, cache_dir="llm_weights").to(
-        device
-    )
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path, cache_dir="llm_weights"
+    ).to(device)
     tokenizer = AutoTokenizer.from_pretrained(
         "NousResearch/Llama-2-7b-chat-hf", cache_dir="llm_weights", use_fast=True
     )
@@ -72,28 +72,45 @@ def completions():
     delim = "[\\INST]"
 
     result = {}
+    batch_size = 4
+
     for jailbreak_technique, list_of_malicious_prompts in advbench_integrated.items():
         result[jailbreak_technique] = dict()
-        for malicious_prompt in tqdm(list_of_malicious_prompts):
-            prompt = orig_prompt.format(prompt=malicious_prompt)
-            inputs = tokenizer(prompt, return_tensors="pt").to(device)
-            generate_ids = model.generate(
-                inputs.input_ids, pad_token_id=tokenizer.eos_token_id, max_length=1000
+
+        for i in tqdm(range(0, len(list_of_malicious_prompts), batch_size)):
+            batch_prompts = list_of_malicious_prompts[i: i + batch_size]
+            formatted_prompts = [orig_prompt.format(prompt=p) for p in batch_prompts]
+
+            inputs = tokenizer(formatted_prompts, return_tensors="pt", padding=True).to(
+                device
             )
-            model_response = tokenizer.batch_decode(
+
+            with torch.no_grad():
+                generate_ids = model.generate(
+                    inputs.input_ids,
+                    pad_token_id=tokenizer.eos_token_id,
+                    attention_mask=inputs.attention_mask,
+                    max_length=1000,
+                )
+
+            model_responses = tokenizer.batch_decode(
                 generate_ids,
                 skip_special_tokens=True,
                 clean_up_tokenization_spaces=False,
-            )[0].split("Inst]")[
-                -1
-            ]  # noqa
-            model_response = model_response.split(delim)[-1].strip()
-            result[jailbreak_technique][malicious_prompt] = model_response
+            )
+
+            for malicious_prompt, model_response in zip(batch_prompts, model_responses):
+                cleaned_response = (
+                    model_response.split("Inst]")[-1].split(delim)[-1].strip()
+                )
+                result[jailbreak_technique][malicious_prompt] = cleaned_response
+
             gc.collect()
-            torch.cuda.empty_cache()
+            torch.mps.empty_cache()
+
     save_path = "./advbench_jailbreak_completions"
-    print('Saving to:', save_path)
-    with open(save_path, 'w') as f:
+    print("Saving to:", save_path)
+    with open(save_path, "w") as f:
         json.dump(result, f, indent=2)
 
 
