@@ -57,10 +57,11 @@ def save_results(result, save_path, jailbreak_technique):
 
 
 def forward_pass(model, tokenizer, batch_prompts, device, orig_prompt, delim):
+    model.eval()
     formatted_prompts = [orig_prompt.format(prompt=p) for p in batch_prompts]
     inputs = tokenizer(formatted_prompts, return_tensors="pt", padding=True).to(device)
 
-    with torch.no_grad():
+    with torch.inference_mode():
         generate_ids = model.generate(
             inputs.input_ids,
             pad_token_id=tokenizer.eos_token_id,
