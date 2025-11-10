@@ -2,6 +2,8 @@
 This is a repository for replicating the experiments from our paper: [Pruning for Protection: Increasing Jailbreak Resistance in Aligned LLMs Without Fine-Tuning
 ](https://arxiv.org/abs/2401.10862). 
 
+Dataset: https://huggingface.co/datasets/notadib/harmful-tasks
+
 # Getting Started
 Install the dependencies and obtain a Wanda pruned model checkpoint as described in the [original repository](https://github.com/locuslab/wanda)
 
